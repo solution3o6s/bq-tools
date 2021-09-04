@@ -23,7 +23,10 @@ def du_field(field_du, from_du):
     return du_size
 
 
-def __travel_fields__(root, traveled_path, traveled_depth, field_path_separator):
+def __travel_fields__(root, traveled_path, traveled_depth, stop_depth, field_path_separator):
+    if 0 < stop_depth <= traveled_depth:
+        return
+
     for f in root:
         field_name = f.get('name', None)
         if not field_name:
@@ -42,18 +45,19 @@ def __travel_fields__(root, traveled_path, traveled_depth, field_path_separator)
             traveled_depth if is_field_record else 'L', field_size
 
         if is_field_record:
-            for p in __travel_fields__(f.get("fields", None), field_path, traveled_depth + 1, '.'):
+            for p in __travel_fields__(f.get("fields", None), field_path, traveled_depth + 1, stop_depth, '.'):
                 yield p
 
 
-def travel_fields(root, path):
+def travel_fields(root, stop_depth=-1):
     if not isinstance(root, list):
         return
 
     return __travel_fields__(
         root,
-        path,
+        "",
         0,
+        stop_depth,
         ''
     )
 
@@ -90,10 +94,11 @@ OUTPUT_FORMATTERS = {
 client = bigquery.Client()
 args_parser = argparse.ArgumentParser()
 R_JUST_SIZE = 13
+table_name = ''
 
 if __name__ == "__main__":
     args_parser.add_argument(
-        '--schema', '--schema', required=True, help='A path to BQ schema file'
+        '--schema', '--schema', required=True, help='Path to a BQ schema file'
     )
 
     args_parser.add_argument(
@@ -105,7 +110,7 @@ if __name__ == "__main__":
     )
 
     args_parser.add_argument(
-        '-d', help='Display an entry for all fields depth records deep.'
+        '-d', default=-1, help='Display an entry for all fields depth records deep.'
     )
 
     args_parser.add_argument(
@@ -119,7 +124,6 @@ if __name__ == "__main__":
     args = args_parser.parse_args()
 
     bq_schema = None
-    table_name = args.table_name
 
     try:
         bq_schema = load_schema(args.schema)
@@ -145,8 +149,11 @@ if __name__ == "__main__":
         use_query_cache=False,
     )
 
+    max_depth = args.d
     out_format = args.format
+    table_name = args.table_name
+
     OUTPUT_FORMATTERS.get(out_format)(
-        travel_fields(bq_schema.get("fields"), ""),
+        travel_fields(bq_schema.get("fields"), max_depth),
         args.h
     )
