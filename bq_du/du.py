@@ -45,7 +45,7 @@ def __travel_fields__(root, traveled_path, traveled_depth, stop_depth, field_pat
             traveled_depth if is_field_record else 'L', field_size
 
         if is_field_record:
-            for p in __travel_fields__(f.get("fields", None), field_path, traveled_depth + 1, stop_depth, ''):
+            for p in __travel_fields__(f.get("fields", None), field_path, traveled_depth + 1, stop_depth, '.'):
                 yield p
 
 
@@ -62,28 +62,47 @@ def travel_fields(root, stop_depth=-1):
     )
 
 
-def format_size(size, options=None):
-    res = '{}B'.format(size)
+def human_readable_size(size):
+    resp = '{}B'.format(size)
+    for fmt in [[10, 'KB'], [10, 'MB'], [10, 'GB'], [10, 'TB']]:
+        size = size >> fmt[0]
+        if not size:
+            break
 
-    if options and 'h' in options:
-        for fmt in [[10, 'KB'], [10, 'MB'], [10, 'GB'], [10, 'TB']]:
-            size = size >> fmt[0]
-            if not size:
-                break
+        resp = '{}{}'.format(size, fmt[1])
 
-            res = '{}{}'.format(size, fmt[1])
+    return resp
 
-    return res
+
+def csv_size(size):
+    return '{}'.format(size)
+
+
+def raw_size(size):
+    return '{}B'.format(size)
 
 
 def raw_output_formatter(out, options):
+    fmt = raw_size
+    pad = BYTES_PADDING
+
+    if 'h' in options:
+        pad = HUMAN_PADDING
+        fmt = human_readable_size
+
     for field, _, size in out:
-        print('{}\t{}'.format(format_size(size, options).rjust(R_JUST_SIZE), field))
+        print('{}\t{}'.format(fmt(size).rjust(pad), field))
 
 
 def csv_output_formatter(out, options):
+    fmt = csv_size
+
+    if 'h' in options:
+        fmt = human_readable_size
+
+    print('field,level,size')
     for field, level, size in out:
-        print('{},{},{}'.format(field, level, format_size(size, options)))
+        print('{},{},{}'.format(field, level, fmt(size)))
 
 
 OUTPUT_FORMATTERS = {
@@ -91,34 +110,34 @@ OUTPUT_FORMATTERS = {
     'raw': raw_output_formatter,
 }
 
-client = bigquery.Client()
 args_parser = argparse.ArgumentParser()
-R_JUST_SIZE = 13
+BYTES_PADDING = 15
+HUMAN_PADDING = 5
 table_name = ''
 
 if __name__ == "__main__":
-    args_parser.add_argument(
-        '--schema', '--schema', required=True, help='Path to a BQ schema file'
-    )
-
-    args_parser.add_argument(
-        '-h', help='"Human-readable" output.'
-    )
-
     args_parser.add_argument(
         '--table_name', '--table_name', help='BQ table name clause.'
     )
 
     args_parser.add_argument(
-        '-d', default=-1, help='Display an entry for all fields depth records deep.'
+        '--schema', '--schema', required=True, help='Path to a BQ schema file.'
     )
 
     args_parser.add_argument(
-        '--use_legacy_sql', '--use_legacy_sql', help='Use legacy SQL. Default is false.'
+        '-d', '--depth', help='Display an entry for all fields depth records deep.'
     )
 
     args_parser.add_argument(
         '--format', '--format', default='raw', help='Output format. Either CSV or raw. Default is raw.'
+    )
+
+    args_parser.add_argument(
+        '--use_legacy_sql', action='store_true', default=False, help='Use legacy SQL. Default is false.'
+    )
+
+    args_parser.add_argument(
+        '--human_readable', '--human_readable', action='store_true', default=False, help='"Human-readable" output.'
     )
 
     args = args_parser.parse_args()
@@ -140,8 +159,10 @@ if __name__ == "__main__":
         exit(1)
 
     legacy = bool(
-        args.legacy_sql or True
+        args.use_legacy_sql or False
     )
+
+    client = bigquery.Client()
 
     job_config = bigquery.QueryJobConfig(
         dry_run=True,
@@ -149,11 +170,15 @@ if __name__ == "__main__":
         use_query_cache=False,
     )
 
-    max_depth = args.d
-    out_format = args.format
+    max_depth = args.depth or -1
     table_name = args.table_name
+    out_format = args.format or 'raw'
+
+    formatting_opts = []
+    if args.human_readable:
+        formatting_opts.append('h')
 
     OUTPUT_FORMATTERS.get(out_format)(
         travel_fields(bq_schema.get("fields"), max_depth),
-        args.h
+        formatting_opts
     )
