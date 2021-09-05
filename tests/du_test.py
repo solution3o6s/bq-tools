@@ -4,10 +4,10 @@ import unittest
 import unittest.mock as mock
 
 from io import StringIO
-from srs.bq_du.du import format_size
-from srs.bq_du.du import travel_fields
-from srs.bq_du.du import csv_output_formatter
-from srs.bq_du.du import raw_output_formatter, R_JUST_SIZE
+from bq_du.du import format_size
+from bq_du.du import travel_fields
+from bq_du.du import csv_output_formatter
+from bq_du.du import raw_output_formatter, R_JUST_SIZE
 
 
 def mock_du_field(field_du, from_du):
@@ -96,7 +96,7 @@ class TravelFieldsTestCase(unittest.TestCase):
             }
         ]
 
-    @mock.patch('srs.bq_du.du.du_field', mock_du_field)
+    @mock.patch('bq_du.du.du_field', mock_du_field)
     def assert_travel_by_depth(self, expected_fields_count, expected_fields_depth, travel_depth):
         actual_fields_count = 0
         actual_fields_depth = 0

@@ -4,8 +4,8 @@ setup(
     name='bq_du',
     version='1.0.0',
     author='Dmitri Krasnenko',
-    license='',
-    description='BQ du like command',
+    license='Apache License 2.0',
+    description='du like command for BQ fields',
     author_email='dmitri@3o6.solutions',
     packages=[
         'bq_du'

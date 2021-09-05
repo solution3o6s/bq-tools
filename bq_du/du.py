@@ -45,7 +45,7 @@ def __travel_fields__(root, traveled_path, traveled_depth, stop_depth, field_pat
             traveled_depth if is_field_record else 'L', field_size
 
         if is_field_record:
-            for p in __travel_fields__(f.get("fields", None), field_path, traveled_depth + 1, stop_depth, '.'):
+            for p in __travel_fields__(f.get("fields", None), field_path, traveled_depth + 1, stop_depth, ''):
                 yield p
 
 
