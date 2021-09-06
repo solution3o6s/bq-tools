@@ -11,7 +11,7 @@ from bq_du.du import csv_output_formatter
 from bq_du.du import raw_output_formatter, HUMAN_PADDING
 
 
-def mock_du_field(field_du, from_du):
+def mock_du_field(_):
     return random.randint(10, 3072)
 
 
